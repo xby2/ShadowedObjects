@@ -50,6 +50,7 @@
     <Compile Include="Model\Policy.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ShadowCollection.cs" />
     <Compile Include="ShadowedObject.cs" />
   </ItemGroup>
   <ItemGroup>

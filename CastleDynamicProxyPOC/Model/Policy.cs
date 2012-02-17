@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Collections.ObjectModel;
 
 namespace CastleDynamicProxyPOC.Model
 {
@@ -10,13 +11,13 @@ namespace CastleDynamicProxyPOC.Model
 		public Policy()
 		{
 			AccountNumber = "ORIGINAL ACCOUNT";
-			Coverages = new List<Coverage>();	
+			Coverages = new ShadowCollection<Coverage>();	
 		}
 
 		
 		public virtual String AccountNumber { get; set; }
 
-		public virtual List<Coverage> Coverages { get; set; }
+		public virtual Collection<Coverage> Coverages { get; set; }
 
 		public void touch()
 		{

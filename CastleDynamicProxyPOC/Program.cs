@@ -19,10 +19,10 @@ namespace CastleDynamicProxyPOC
 
 			policy2.ResetToOriginal("AccountNumber");
 
-			//policy2.Coverages.Add(new Coverage());
-			//policy2.Coverages[0].name = "ChangedVal";
+			policy2.Coverages.Add(ShadowedObject.Create<Coverage>());
+			policy2.Coverages[0].name = "ChangedVal";
 
-			//policy2.ResetToOriginal("Coverages");
+			policy2.ResetToOriginal("Coverages");
 
 			Console.ReadLine();
 		}

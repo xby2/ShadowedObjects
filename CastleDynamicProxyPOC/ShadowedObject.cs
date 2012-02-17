@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using Castle.DynamicProxy;
@@ -65,10 +67,53 @@ namespace CastleDynamicProxyPOC
 		{
 			var setName = "set_" + propName;
 			var setMethod = instance.GetType().GetMethod(setName);
+
 			var getValue = setMethod.Invoke(instance, new object[1] { Originals[propName] });
 		}
 
 		public void Intercept(IInvocation invocation)
+		{
+			if (invocation.MethodInvocationTarget.Name.StartsWith("set_", StringComparison.Ordinal))
+			{
+				InterceptSet(invocation);
+			}
+			else
+			{
+				InterceptCollection(invocation);			
+			}
+		}
+
+		private void InterceptCollection(IInvocation invocation)
+		{
+			invocation.Proceed();
+			var getValue = invocation.ReturnValue;
+
+			var strippedName = invocation.MethodInvocationTarget.Name.Replace("set_", "").Replace("get_", "");
+			//var getName = "get_" + strippedName;
+			//var getMethod = invocation.InvocationTarget.GetType().GetMethod(getName);
+			//var getValue = getMethod.Invoke(invocation.InvocationTarget, new object[0]);
+
+			var theCollection = (getValue as IShadowCollection);
+
+			if (theCollection != null)
+			{
+				if ( ! theCollection.isTracked)
+				{
+					changedDelegate delg = ()=>
+					{
+						if (!Originals.ContainsKey(strippedName))
+						{
+							Originals[strippedName] = theCollection.Clone();
+						}
+					};
+
+					theCollection.changed += delg;				
+				}
+			}
+			
+		}
+
+		private void InterceptSet(IInvocation invocation)
 		{
 			var strippedName = invocation.MethodInvocationTarget.Name.Replace("set_", "");
 			var getName = "get_" + strippedName;
@@ -82,7 +127,14 @@ namespace CastleDynamicProxyPOC
 				Originals[strippedName] = getValue;
 			}
 
-			Console.WriteLine(String.Format("Intercepted {0}. Old Value:{1}. New Value:{2}",invocation.MethodInvocationTarget.Name, getValue, invocation.GetArgumentValue(0) ) );
+			if (getValue is ICollection)
+			{
+				Console.WriteLine(String.Format("Intercepted {0}. Old Length:{1}. New Length:{2}", invocation.MethodInvocationTarget.Name, (getValue as ICollection).Count, (invocation.GetArgumentValue(0) as ICollection).Count));
+			}
+			else
+			{
+				Console.WriteLine(String.Format("Intercepted {0}. Old Value:{1}. New Value:{2}", invocation.MethodInvocationTarget.Name, getValue, invocation.GetArgumentValue(0)));
+			}
 
 			invocation.Proceed();
 		}
@@ -103,9 +155,13 @@ namespace CastleDynamicProxyPOC
 		public bool ShouldInterceptMethod(Type type, System.Reflection.MethodInfo methodInfo)
 		{	
 			//JDB: technically I think this should use the Attribute that the compiler puts on the IL, but this will do for now
-			return methodInfo.Name.StartsWith("set_", StringComparison.Ordinal);
+			if (methodInfo.Name.StartsWith("set_", StringComparison.Ordinal))
+			{ return true;}
 
-			return true;
+			if (typeof(ICollection).IsAssignableFrom(methodInfo.ReturnType))
+			{	return true; }
+
+			return false;
 		}
 	}
 }
