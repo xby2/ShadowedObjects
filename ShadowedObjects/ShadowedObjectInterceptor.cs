@@ -14,6 +14,8 @@ namespace ShadowedObjects
 	{
 		void BaselineOriginals();
 		void ResetToOriginals(T instance, Expression<Func<T, object>> func);
+
+		bool HasChanges { get; }
 	}
 
 	
@@ -23,19 +25,49 @@ namespace ShadowedObjects
 		protected readonly Dictionary<string, object> Originals = new Dictionary<string, object>();
 		protected readonly Dictionary<string, object> Previous = new Dictionary<string, object>();
 
+		protected readonly Dictionary<string, IShadowObject> Children = new Dictionary<string, IShadowObject>();
+
 		protected static readonly ILog logger = LogManager.GetLogger(typeof(ShadowedInterceptor<T>));
 
 		public void BaselineOriginals()
 		{
 			Originals.Clear();
+			HasChanges = false;
 		}
 
 		public void ResetToOriginals(T instance, Expression<Func<T, object>> func)
 		{
 			var prop = ExpressionUtil.GetPropertyCore(func.Body);
+
+			if ( ! Originals.ContainsKey(prop.Name))
+			{	return;}
+
 			prop.GetSetMethod().Invoke(instance, new object[1] { Originals[prop.Name] });
+
+			Originals.Remove(prop.Name);
+			
+			if ( Originals.Count < 0 )
+			{
+				HasChanges = false;
+			}
 		}
 			
+		public bool HasChanges { get; private set; }
+
+		private HasChangesDelegate _hasChildrenChanges = () => {return false;};
+
+		public bool HasChildChanges 
+		{ 
+			get
+			{
+				if (_hasChildrenChanges.GetInvocationList().Cast<HasChangesDelegate>().Any(delg => delg()))
+				{
+					return true;
+				}
+				return false;
+			}
+		}
+
 		public void Intercept(IInvocation invocation)
 		{
 			if (IsSetter(invocation.Method))
@@ -62,13 +94,13 @@ namespace ShadowedObjects
 		private void InterceptGenericCollection(IInvocation invocation)
 		{
 			invocation.Proceed();
-			var getValue = invocation.ReturnValue;
+			var getValue = invocation.ReturnValue;  
 
 			var strippedName = invocation.MethodInvocationTarget.Name.Replace("set_", "").Replace("get_", "");
 
 			var theCollection = (getValue as IShadowCollection);
 
-			if (!Originals.ContainsKey(strippedName))
+			if ( ! Originals.ContainsKey(strippedName))
 			{
 				if (theCollection == null && getValue != null) //a collection, but not a ShadowCollection
 				{
@@ -76,32 +108,40 @@ namespace ShadowedObjects
 					Type GenShadowType = typeof(ShadowCollection<>);
 					Type SpecShadowType = GenShadowType.MakeGenericType(colType);
 
-					var ShadowList = Activator.CreateInstance(SpecShadowType, getValue);
+					theCollection = Activator.CreateInstance(SpecShadowType, getValue) as IShadowCollection;
 
-					Originals[strippedName] = ShadowList;
+					Originals[strippedName] = theCollection; //we need a value in originals so the Set_ we are about to invoke doesn't try to do anything.  We remove it right after
+
+					var setMethod = invocation.InvocationTarget.GetType().GetMethod("set_" + strippedName);
+					var setValue = setMethod.Invoke(invocation.InvocationTarget, new object[1] { theCollection } );
+					
+					Originals.Remove(strippedName);
+
+					SetCollectionDelegate(strippedName, theCollection);
 				}
-				else
+				else if (theCollection != null)
 				{
-					Originals[strippedName] = theCollection == null ? null : theCollection.Clone();
+					SetCollectionDelegate(strippedName, theCollection);
+					//Originals[strippedName] = theCollection == null ? null : theCollection.Clone();
 				}
 			}
+			
+		}
 
-			//if (theCollection != null)
-			//{
-			//    if ( ! theCollection.isTracked)
-			//    {
-			//        changedDelegate delg = ()=>
-			//        {
-			//            if (!Originals.ContainsKey(strippedName))
-			//            {
-			//                Originals[strippedName] = theCollection.Clone();
-			//            }
-			//        };
+		private void SetCollectionDelegate(string strippedName, IShadowCollection theCollection)
+		{
+			if (!theCollection.isTracked)
+			{
+				changedDelegate delg = () =>
+				                       	{
+				                       		if (!Originals.ContainsKey(strippedName))
+				                       		{
+				                       			Originals[strippedName] = theCollection.Clone();
+				                       		}
+				                       	};
 
-			//        theCollection.changed += delg;				
-			//    }
-			//}
-
+				theCollection.changed += delg;
+			}
 		}
 
 		private void InterceptSet(IInvocation invocation)
@@ -131,7 +171,10 @@ namespace ShadowedObjects
 			}
 
 			invocation.Proceed();
+
+			HasChanges = true;
 		}
 	}
 
+	public delegate bool HasChangesDelegate();
 }

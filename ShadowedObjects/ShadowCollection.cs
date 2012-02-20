@@ -20,7 +20,7 @@ namespace ShadowedObjects
 	{
 		public bool isChanged;
 		
-		public event changedDelegate changed = () => {};
+		public event changedDelegate changed = ()=>{};
 
 		public bool isTracked { get{ return changed.GetInvocationList().Length > 1; } }
 

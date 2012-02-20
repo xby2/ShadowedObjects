@@ -45,6 +45,13 @@ namespace ShadowedObjects
 			ishadow.BaselineOriginals();
 		}
 
+		public static bool HasChanges<T>(this T shadowed)
+		{
+			var ishadow = GetIShadow(shadowed);
+
+			return ishadow.HasChanges;
+		}
+
 		private static IShadowIntercept<T> GetIShadow<T>(T shadowed)
 		{
 			if (shadowed == null)
@@ -63,7 +70,8 @@ namespace ShadowedObjects
 	}
 
 	public interface IShadowObject
-	{			
+	{
+		
 	}
 
 	public class ShadowedObjectProxyGenerationHook : IProxyGenerationHook

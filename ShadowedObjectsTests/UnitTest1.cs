@@ -35,6 +35,8 @@ namespace ShadowedObjectsTests
 			public TestLevelB(){ Bstuff = 1; }
 		}
 
+		#region "Resetting Values"
+
 		[TestMethod]
 		public void StringResetToOriginalTest()
 		{			
@@ -44,6 +46,48 @@ namespace ShadowedObjectsTests
 			A.ResetToOriginal(a=>a.name);
 			Assert.IsTrue(A.name == "initial");
 		}
+
+		[TestMethod]
+		public void ChildObjectResetToOriginalTest()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.NestedAs = new Collection<TestLevelA>();
+			A.B = ShadowedObject.Create<TestLevelB>();
+			A.B.Bstuff = 2;
+
+			A.BaselineOriginals();
+			A.B.BaselineOriginals();
+
+			
+			A.B = ShadowedObject.Create<TestLevelB>();
+			A.B.Bstuff = 3;
+
+			//This works without recursion because the entire B object, along with the BStuff Property is reset to the B with a BStuff of 2.
+			A.ResetToOriginal(a=>a.B);
+
+			Assert.IsTrue(A.B.Bstuff == 2);
+		}
+
+
+		[TestMethod]
+		public void RecursionResetToOriginalTest()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.NestedAs = new Collection<TestLevelA>();
+			A.B = ShadowedObject.Create<TestLevelB>();
+			A.B.Bstuff = 2;
+
+			A.BaselineOriginals();
+			A.B.BaselineOriginals();
+
+			A.B.Bstuff = 3;
+
+			//This WON'T work without recursion because the B here still is the original B, nothing to reset.
+			A.ResetToOriginal(a => a.B);
+
+			Assert.IsTrue(A.B.Bstuff == 2);
+		}
+
 
 		[TestMethod]
 		public void CollectionResetToOriginalTest()
@@ -121,5 +165,35 @@ namespace ShadowedObjectsTests
 			Assert.IsTrue(A.B.Bstuff == 2);
 			Assert.IsTrue(A.NestedAs.Count == 0);
 		}
+
+	#endregion
+
+		[TestMethod]
+		public void CheckingForDirtyObject()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.name = "asfd";
+
+			A.BaselineOriginals();
+
+			A.name = "xyz";
+
+			Assert.IsTrue(A.HasChanges());
+		}
+
+		[TestMethod]
+		public void RecursiveCheckingForDirtyObject()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.B = ShadowedObject.Create<TestLevelB>();
+
+			A.BaselineOriginals();
+			A.B.BaselineOriginals();
+
+			A.B.Bstuff = 2;
+
+			Assert.IsTrue(A.HasChanges());
+		}		
+
 	}
 }
