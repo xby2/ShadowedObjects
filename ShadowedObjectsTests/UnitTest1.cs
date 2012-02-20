@@ -23,9 +23,12 @@ namespace ShadowedObjectsTests
 
 			public virtual Collection<TestLevelA> NestedAs { get; set; }
 
+			public virtual Dictionary<string,TestLevelB> dictOfBs { get; set; } 
+
 			public virtual ArrayList UntypedList { get; set; }
 
 			public virtual TestLevelB B { get; set; }
+
 		}
 
 		public class TestLevelB
@@ -43,6 +46,19 @@ namespace ShadowedObjectsTests
 		}
 
 		#region Resetting Values
+
+
+		[TestMethod]
+		public void StringResetAllPropertiesToOriginalTest()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.name = "changed 1";
+			A.name = "changed 2";
+			A.NestedAs = new Collection<TestLevelA>();
+			
+			A.ResetToOriginal();
+			Assert.IsTrue(A.name == "initial");
+		}
 
 		[TestMethod]
 		public void StringResetToOriginalTest()
@@ -113,6 +129,23 @@ namespace ShadowedObjectsTests
 		}
 
 
+
+		[TestMethod]
+		public void DictionaryResetToOriginalTest()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.dictOfBs = new Dictionary<string, TestLevelB>();
+
+			A.BaselineOriginals();
+
+			A.dictOfBs.Add("asdf", new TestLevelB());
+
+			A.ResetToOriginal(a=>a.dictOfBs);
+
+			Assert.IsTrue(A.dictOfBs.Count < 1);
+		}
+
+
 		[TestMethod]
 		public void NonGenericCollectionResetToOriginalTest()
 		{
@@ -180,13 +213,29 @@ namespace ShadowedObjectsTests
 		public void CheckingForChangedObject()
 		{
 			var A = ShadowedObject.Create<TestLevelA>();
-			A.name = "asfd";
+			A.name = "asdf";
 
 			A.BaselineOriginals();
 
 			A.name = "xyz";
 
 			Assert.IsTrue(A.HasChanges());
+		}
+
+		[TestMethod]
+		public void CheckingForImplicitResetOfValue()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.name = "asdf";
+
+			A.BaselineOriginals();
+
+			A.name = "xyz";
+			Assert.IsTrue(A.HasChanges());
+
+
+			A.name = "asdf";
+			Assert.IsTrue( ! A.HasChanges() );
 		}
 
 		[TestMethod]
@@ -211,16 +260,34 @@ namespace ShadowedObjectsTests
 
 			A.BaselineOriginals();
 
-			A.NestedAs.Add(new TestLevelA());
-			A.NestedAs.Add(new TestLevelA());
+			Assert.IsTrue( ! A.HasChanges() );
 
-			A.ResetToOriginal(a => a.NestedAs);
+			A.NestedAs.Add(new TestLevelA());
+			A.NestedAs.Add(new TestLevelA());
 
 			Assert.IsTrue(A.HasChanges());
 		}
 
 		[TestMethod]
-		public void RecursiveTwoLevelsCheckingForChangedObject()
+		public void RecursiveTwoLevelCheckingForChangedCollection()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.NestedAs = new Collection<TestLevelA>();
+
+			A.NestedAs.Add(ShadowedObject.Create<TestLevelA>());
+			A.NestedAs.Add(ShadowedObject.Create<TestLevelA>());
+
+			A.BaselineOriginals();
+
+			Assert.IsTrue(!A.HasChanges());
+
+			A.NestedAs[0].name = "xyz";
+
+			Assert.IsTrue(A.HasChanges());
+		}
+
+		[TestMethod]
+		public void RecursiveTwoLevelCheckingForChangedObject()
 		{
 			var A = ShadowedObject.Create<TestLevelA>();
 			A.B = ShadowedObject.Create<TestLevelB>();
@@ -250,8 +317,19 @@ namespace ShadowedObjectsTests
 			A.B.C.ResetToOriginal(c=>c.CStuff);
 
 			Assert.IsFalse(A.B.C.HasChanges());
-		}		
+		}
 
 		#endregion
+
+
+		[TestMethod]
+		public void CreateShadowsFromPocoGraph()
+		{
+			var A = new TestLevelA();
+			A.B = new TestLevelB();
+			A.B.C = new TestLevelC();
+
+			ShadowedObject.CopyInto<TestLevelA>();
+		}
 	}
 }

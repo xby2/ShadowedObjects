@@ -33,6 +33,11 @@ namespace ShadowedObjects
 			(ishadow as IShadowIntercept<T>).ResetToOriginals((T)shadowed, property);
 		}
 
+		public static void ResetToOriginal<T>(this T shadowed)
+		{
+			throw new NotImplementedException();
+		}
+
 		public static void BaselineOriginals<T>(this T shadowed) 
 		{
 			BaselineOriginalsEx((T)shadowed);
@@ -52,7 +57,7 @@ namespace ShadowedObjects
 			return ishadow.HasChanges;
 		}
 
-		internal static IShadowIntercept GetIShadow(object shadowed)
+		internal static IShadowChangeTracker GetIShadow(object shadowed)
 		{
 			if (shadowed == null)
 			{
@@ -65,7 +70,12 @@ namespace ShadowedObjects
 				throw new ArgumentException("Object is not a Proxy");
 			}
 
-			return hack.GetInterceptors().FirstOrDefault(i => i is IShadowIntercept) as IShadowIntercept;
+			return hack.GetInterceptors().FirstOrDefault(i => i is IShadowChangeTracker) as IShadowChangeTracker;
+		}
+
+		public static void CopyInto<T>()
+		{
+			throw new NotImplementedException();
 		}
 	}
 
