@@ -32,10 +32,17 @@ namespace ShadowedObjectsTests
 		{
 			public virtual int Bstuff { get; set; }
 
+			public virtual TestLevelC C { get; set; }
+
 			public TestLevelB(){ Bstuff = 1; }
 		}
 
-		#region "Resetting Values"
+		public class TestLevelC
+		{
+			public virtual string CStuff { get; set; }
+		}
+
+		#region Resetting Values
 
 		[TestMethod]
 		public void StringResetToOriginalTest()
@@ -168,8 +175,9 @@ namespace ShadowedObjectsTests
 
 	#endregion
 
+		#region Checking for Changes flag
 		[TestMethod]
-		public void CheckingForDirtyObject()
+		public void CheckingForChangedObject()
 		{
 			var A = ShadowedObject.Create<TestLevelA>();
 			A.name = "asfd";
@@ -182,7 +190,7 @@ namespace ShadowedObjectsTests
 		}
 
 		[TestMethod]
-		public void RecursiveCheckingForDirtyObject()
+		public void RecursiveCheckingForChangedObject()
 		{
 			var A = ShadowedObject.Create<TestLevelA>();
 			A.B = ShadowedObject.Create<TestLevelB>();
@@ -193,7 +201,57 @@ namespace ShadowedObjectsTests
 			A.B.Bstuff = 2;
 
 			Assert.IsTrue(A.HasChanges());
+		}
+
+		[TestMethod]
+		public void RecursiveCheckingForChangedCollection()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.NestedAs = new Collection<TestLevelA>();
+
+			A.BaselineOriginals();
+
+			A.NestedAs.Add(new TestLevelA());
+			A.NestedAs.Add(new TestLevelA());
+
+			A.ResetToOriginal(a => a.NestedAs);
+
+			Assert.IsTrue(A.HasChanges());
+		}
+
+		[TestMethod]
+		public void RecursiveTwoLevelsCheckingForChangedObject()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.B = ShadowedObject.Create<TestLevelB>();
+			A.B.C = ShadowedObject.Create<TestLevelC>();
+
+			A.BaselineOriginals();
+			A.B.BaselineOriginals();
+
+			A.B.C.CStuff = "asdf";
+
+			Assert.IsTrue(A.HasChanges());
+		}
+
+
+		[TestMethod]
+		public void RecursiveCheckingForChangedObjectAfterReset()
+		{
+			var A = ShadowedObject.Create<TestLevelA>();
+			A.B = ShadowedObject.Create<TestLevelB>();
+			A.B.C = ShadowedObject.Create<TestLevelC>();
+
+			A.BaselineOriginals();
+			A.B.BaselineOriginals();
+
+			A.B.C.CStuff = "asdf";
+
+			A.B.C.ResetToOriginal(c=>c.CStuff);
+
+			Assert.IsFalse(A.B.C.HasChanges());
 		}		
 
+		#endregion
 	}
 }

@@ -22,37 +22,37 @@ namespace ShadowedObjects
 			var options = new ProxyGenerationOptions(new ShadowedObjectProxyGenerationHook());
 			var theShadow = _generator.CreateClassProxy(typeof(T), new Type[]{ typeof(IShadowObject) }, options, setCeptor);
 
-			GetIShadow<T>((T)theShadow).BaselineOriginals();
+			((T)theShadow).BaselineOriginals();
 			
 			return theShadow as T;
 		}
 
 		public static void ResetToOriginal<T>(this T shadowed, Expression<Func<T, object>> property )
 		{
-			var ishadow = GetIShadow<T>((T)shadowed);
-			ishadow.ResetToOriginals((T)shadowed, property);
+			var ishadow = GetIShadow((IShadowObject)shadowed);
+			(ishadow as IShadowIntercept<T>).ResetToOriginals((T)shadowed, property);
 		}
 
-		public static void BaselineOriginals<T>(this T shadowed)
+		public static void BaselineOriginals<T>(this T shadowed) 
 		{
-			BaselineOriginalsEx<T>((T)shadowed);
+			BaselineOriginalsEx((T)shadowed);
 		}
 
-		public static void BaselineOriginalsEx<T>(T shadowed)
+		public static void BaselineOriginalsEx<T>(T shadowed) 
 		{
-			var ishadow = GetIShadow<T>(shadowed);
+			var ishadow = GetIShadow(shadowed) as IShadowIntercept<T>;
 
 			ishadow.BaselineOriginals();
 		}
 
 		public static bool HasChanges<T>(this T shadowed)
 		{
-			var ishadow = GetIShadow(shadowed);
+			var ishadow = GetIShadow(shadowed) as IShadowIntercept<T>;
 
 			return ishadow.HasChanges;
 		}
 
-		private static IShadowIntercept<T> GetIShadow<T>(T shadowed)
+		internal static IShadowIntercept GetIShadow(object shadowed)
 		{
 			if (shadowed == null)
 			{
@@ -65,7 +65,7 @@ namespace ShadowedObjects
 				throw new ArgumentException("Object is not a Proxy");
 			}
 
-			return hack.GetInterceptors().FirstOrDefault(i => i is IShadowIntercept<T>) as IShadowIntercept<T>;
+			return hack.GetInterceptors().FirstOrDefault(i => i is IShadowIntercept) as IShadowIntercept;
 		}
 	}
 

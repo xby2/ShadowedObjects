@@ -10,16 +10,21 @@ using log4net;
 
 namespace ShadowedObjects
 {
-	public interface IShadowIntercept<T>
+	public interface IShadowIntercept
+	{
+		bool HasChildChanges { get; }
+		bool HasDirectChanges { get; }
+		bool HasChanges{ get; }
+	}
+
+	public interface IShadowIntercept<T> : IShadowIntercept
 	{
 		void BaselineOriginals();
 		void ResetToOriginals(T instance, Expression<Func<T, object>> func);
 
-		bool HasChanges { get; }
 	}
-
 	
-	public class ShadowedInterceptor<T> : IShadowIntercept<T>, IInterceptor
+	public class ShadowedInterceptor<T> : IShadowIntercept<T>, IShadowIntercept, IInterceptor
 	{
 
 		protected readonly Dictionary<string, object> Originals = new Dictionary<string, object>();
@@ -32,7 +37,7 @@ namespace ShadowedObjects
 		public void BaselineOriginals()
 		{
 			Originals.Clear();
-			HasChanges = false;
+			HasDirectChanges = false;
 		}
 
 		public void ResetToOriginals(T instance, Expression<Func<T, object>> func)
@@ -46,21 +51,29 @@ namespace ShadowedObjects
 
 			Originals.Remove(prop.Name);
 			
-			if ( Originals.Count < 0 )
+			if ( Originals.Count < 1 )
 			{
-				HasChanges = false;
+				HasDirectChanges = false;
 			}
 		}
-			
-		public bool HasChanges { get; private set; }
 
-		private HasChangesDelegate _hasChildrenChanges = () => {return false;};
+		public bool HasChanges 
+		{ 
+			get
+			{
+				return HasDirectChanges || HasChildChanges;
+			} 
+		}
+
+		public bool HasDirectChanges { get; private set; }
+
+		private HasChangesDelegate _hasChildrenChangesDelegate = () => {return false;};
 
 		public bool HasChildChanges 
 		{ 
 			get
 			{
-				if (_hasChildrenChanges.GetInvocationList().Cast<HasChangesDelegate>().Any(delg => delg()))
+				if (_hasChildrenChangesDelegate.GetInvocationList().Cast<HasChangesDelegate>().Any(delg => delg()))
 				{
 					return true;
 				}
@@ -151,6 +164,8 @@ namespace ShadowedObjects
 			var getMethod = invocation.InvocationTarget.GetType().GetMethod(getName);
 			var getValue = getMethod.Invoke(invocation.InvocationTarget, new object[0]);
 
+			var setValue = invocation.GetArgumentValue(0);
+
 			Previous[strippedName] = getValue;
 
 			if (!Originals.ContainsKey(strippedName))
@@ -162,17 +177,26 @@ namespace ShadowedObjects
 			{
 				if (getValue is ICollection)
 				{
-					logger.InfoFormat("Intercepted {0}. Old Length:{1}. New Length:{2}", invocation.MethodInvocationTarget.Name, (getValue as ICollection).Count, (invocation.GetArgumentValue(0) as ICollection).Count);
+					logger.InfoFormat("Intercepted {0}. Old Length:{1}. New Length:{2}", invocation.MethodInvocationTarget.Name, (getValue as ICollection).Count, (setValue as ICollection).Count);
 				}
 				else
 				{
-					logger.InfoFormat("Intercepted {0}. Old Value:{1}. New Value:{2}", invocation.MethodInvocationTarget.Name, getValue, invocation.GetArgumentValue(0));
+					logger.InfoFormat("Intercepted {0}. Old Value:{1}. New Value:{2}", invocation.MethodInvocationTarget.Name, getValue, setValue);
 				}
+			}
+
+			if ( setValue is IShadowObject )
+			{
+				_hasChildrenChangesDelegate += ()=>{ return ShadowedObject.GetIShadow(setValue as IShadowObject).HasChanges; };
+			}
+			else
+			{
+				Children.Remove(strippedName);
 			}
 
 			invocation.Proceed();
 
-			HasChanges = true;
+			HasDirectChanges = true;
 		}
 	}
 
