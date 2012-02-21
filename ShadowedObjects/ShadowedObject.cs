@@ -27,6 +27,56 @@ namespace ShadowedObjects
 			return theShadow as T;
 		}
 
+
+		public static T CopyInto<T>(T baseInstance) where T: class
+		{
+			
+			var shadInstance = Create<T>();
+
+			typeof(T).GetProperties()
+			.Where(pi=>pi.GetCustomAttributes(typeof(ShadowedAttribute), true).Length > 0).ToList()
+			.ForEach(pi=>
+			{
+				var theValue = pi.GetGetMethod().Invoke(baseInstance, new object[0]);
+
+				if (pi.PropertyType.IsGenericType && typeof(ICollection).IsAssignableFrom(pi.PropertyType))
+				{
+					theValue = CopyIntoCollection<T>(theValue);
+				}
+				else if (theValue.GetType().GetCustomAttributes(typeof(ShadowedAttribute), true).Length > 0
+				&& !(theValue is IShadowObject))
+				{
+					theValue = CopyIntoObject<T>(theValue);
+				}
+
+				pi.GetSetMethod().Invoke(shadInstance, new object[1]{ theValue });
+			});
+
+			return shadInstance;
+		}
+
+		private static object CopyIntoCollection<T>(object theValue) where T : class
+		{
+			Type[] colType = theValue.GetType().GetGenericArguments();
+			Type GenShadowType = typeof (ShadowCollection<>);
+			Type SpecShadowType = GenShadowType.MakeGenericType(colType);
+
+			var theCollection = Activator.CreateInstance(SpecShadowType, theValue) as IShadowCollection;
+
+			theValue = theCollection;
+			return theValue;
+		}
+
+		private static object CopyIntoObject<T>(object theValue) where T : class
+		{
+			//This is gross, there are definitely better ways to accomplish this
+			var selfRef = typeof (ShadowedObject).GetMethod("CopyInto", System.Reflection.BindingFlags.Static | BindingFlags.Public);
+			var genericRef = selfRef.MakeGenericMethod(theValue.GetType());
+
+			theValue = genericRef.Invoke(null, new object[] {theValue});
+			return theValue;
+		}
+
 		public static void ResetToOriginal<T>(this T shadowed, Expression<Func<T, object>> property )
 		{
 			var ishadow = GetIShadow((IShadowObject)shadowed);
@@ -73,10 +123,6 @@ namespace ShadowedObjects
 			return hack.GetInterceptors().FirstOrDefault(i => i is IShadowChangeTracker) as IShadowChangeTracker;
 		}
 
-		public static void CopyInto<T>()
-		{
-			throw new NotImplementedException();
-		}
 	}
 
 	public interface IShadowObject

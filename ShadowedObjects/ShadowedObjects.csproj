@@ -49,6 +49,7 @@
     <Compile Include="ExpressionUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShadowCollection.cs" />
+    <Compile Include="ShadowedAttribute.cs" />
     <Compile Include="ShadowedObject.cs" />
     <Compile Include="ShadowedObjectInterceptor.cs" />
   </ItemGroup>

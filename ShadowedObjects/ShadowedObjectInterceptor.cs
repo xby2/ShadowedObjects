@@ -219,7 +219,7 @@ namespace ShadowedObjects
 
 			invocation.Proceed();
 
-			if (Originals[strippedName] == setValue)
+			if (setValue == Originals[strippedName] || (setValue != null && setValue.Equals(Originals[strippedName])))
 			{
 				CleanupOriginals(strippedName);
 			}

@@ -12,6 +12,7 @@ namespace ShadowedObjectsTests
 	[TestClass]
 	public class ShadowedObjectTests
 	{
+		[Shadowed]
 		public class TestLevelA
 		{
 			public virtual string name { get; set; }
@@ -27,10 +28,12 @@ namespace ShadowedObjectsTests
 
 			public virtual ArrayList UntypedList { get; set; }
 
+			[Shadowed]
 			public virtual TestLevelB B { get; set; }
 
 		}
 
+		[Shadowed]
 		public class TestLevelB
 		{
 			public virtual int Bstuff { get; set; }
@@ -329,7 +332,57 @@ namespace ShadowedObjectsTests
 			A.B = new TestLevelB();
 			A.B.C = new TestLevelC();
 
-			ShadowedObject.CopyInto<TestLevelA>();
+			var sA = ShadowedObject.CopyInto<TestLevelA>(A);
+
+			sA.BaselineOriginals();
+
+			sA.name = "blah";
+
+			Assert.IsTrue(sA.HasChanges());
+
+			sA.ResetToOriginal(a=>a.name);
+
+			Assert.IsTrue(sA.name == "initial");
+			Assert.IsTrue( ! sA.HasChanges());
+		}
+
+
+		[TestMethod]
+		public void TrackChangesFromPocoGraphCopiedShadows()
+		{
+			var A = new TestLevelA();
+			A.B = new TestLevelB();
+			A.B.C = new TestLevelC();
+
+			var sA = ShadowedObject.CopyInto(A);
+			
+			sA.B.Bstuff = 3;
+
+			Assert.IsTrue(sA.B.HasChanges());
+
+			sA.B.ResetToOriginal(b=>b.Bstuff);
+
+			Assert.IsTrue( ! sA.B.HasChanges());
+		}
+
+
+		[TestMethod]
+		public void TrackChangesFromPocoCollectionCopiedShadows()
+		{
+			var A = new TestLevelA();
+			A.NestedAs = new Collection<TestLevelA>(){new TestLevelA(), new TestLevelA()};
+
+			var sA = ShadowedObject.CopyInto(A);
+
+			Assert.IsTrue( ! sA.HasChanges());
+
+			sA.NestedAs[0].name = "xyz";
+
+			Assert.IsTrue(sA.HasChanges());
+
+			sA.ResetToOriginal(a=>a.NestedAs[0]);
+
+			Assert.IsTrue(!sA.HasChanges());
 		}
 	}
 }
