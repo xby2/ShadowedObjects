@@ -15,13 +15,12 @@ namespace ShadowedObjects
 		bool HasChildChanges { get; }
 		bool HasDirectChanges { get; }
 		bool HasChanges{ get; }
+		void BaselineOriginals();
 	}
 
 	public interface IShadowIntercept<T> : IShadowChangeTracker
-	{
-		void BaselineOriginals();
+	{		
 		void ResetToOriginals(T instance, Expression<Func<T, object>> func);
-
 	}
 	
 	public class ShadowedInterceptor<T> : IShadowIntercept<T>, IShadowChangeTracker, IInterceptor
@@ -50,7 +49,6 @@ namespace ShadowedObjects
 
 			setMethod.Invoke(instance, new object[1] { Originals[prop.Name] });
 
-			//ResetToOriginals(instance, setMethod, prop.Name);
 		}
 
 		private void CleanupOriginals(string propName)

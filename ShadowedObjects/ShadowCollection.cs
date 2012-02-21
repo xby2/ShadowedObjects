@@ -119,5 +119,10 @@ namespace ShadowedObjects
 				return HasDirectChanges || HasChildChanges;
 			}
 		}
+
+		public void BaselineOriginals()
+		{
+			HasDirectChanges = false;
+		}
 	}
 }

@@ -22,6 +22,7 @@ namespace ShadowedObjectsTests
 				name="initial";
 			}
 
+			[Shadowed]
 			public virtual Collection<TestLevelA> NestedAs { get; set; }
 
 			public virtual Dictionary<string,TestLevelB> dictOfBs { get; set; } 
@@ -373,14 +374,15 @@ namespace ShadowedObjectsTests
 			A.NestedAs = new Collection<TestLevelA>(){new TestLevelA(), new TestLevelA()};
 
 			var sA = ShadowedObject.CopyInto(A);
-
-			Assert.IsTrue( ! sA.HasChanges());
+			
+			sA.BaselineOriginals();
+			Assert.IsTrue( ! sA.HasChanges());			
 
 			sA.NestedAs[0].name = "xyz";
 
 			Assert.IsTrue(sA.HasChanges());
 
-			sA.ResetToOriginal(a=>a.NestedAs[0]);
+			sA.NestedAs[0].ResetToOriginal(a => a.name);
 
 			Assert.IsTrue(!sA.HasChanges());
 		}

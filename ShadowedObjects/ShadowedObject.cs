@@ -39,14 +39,16 @@ namespace ShadowedObjects
 			{
 				var theValue = pi.GetGetMethod().Invoke(baseInstance, new object[0]);
 
+				if (theValue == null) return;
+
 				if (pi.PropertyType.IsGenericType && typeof(ICollection).IsAssignableFrom(pi.PropertyType))
 				{
-					theValue = CopyIntoCollection<T>(theValue);
+					theValue = CopyIntoCollection(theValue);
 				}
 				else if (theValue.GetType().GetCustomAttributes(typeof(ShadowedAttribute), true).Length > 0
 				&& !(theValue is IShadowObject))
 				{
-					theValue = CopyIntoObject<T>(theValue);
+					theValue = CopyIntoObject(theValue);
 				}
 
 				pi.GetSetMethod().Invoke(shadInstance, new object[1]{ theValue });
@@ -55,19 +57,27 @@ namespace ShadowedObjects
 			return shadInstance;
 		}
 
-		private static object CopyIntoCollection<T>(object theValue) where T : class
+		private static object CopyIntoCollection(object theValue) 
 		{
 			Type[] colType = theValue.GetType().GetGenericArguments();
 			Type GenShadowType = typeof (ShadowCollection<>);
 			Type SpecShadowType = GenShadowType.MakeGenericType(colType);
 
-			var theCollection = Activator.CreateInstance(SpecShadowType, theValue) as IShadowCollection;
+			var theCollection = Activator.CreateInstance(SpecShadowType, theValue as IList) as IList;
 
 			theValue = theCollection;
+			
+			for (int i=0; i < theCollection.Count; i++ )
+			{
+				theCollection[i] = CopyIntoObject(theCollection[i]);
+			}
+
+			(theCollection as IShadowChangeTracker).BaselineOriginals();
+
 			return theValue;
 		}
 
-		private static object CopyIntoObject<T>(object theValue) where T : class
+		private static object CopyIntoObject(object theValue) 
 		{
 			//This is gross, there are definitely better ways to accomplish this
 			var selfRef = typeof (ShadowedObject).GetMethod("CopyInto", System.Reflection.BindingFlags.Static | BindingFlags.Public);
