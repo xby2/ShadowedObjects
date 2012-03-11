@@ -48,10 +48,15 @@
   <ItemGroup>
     <Compile Include="ExpressionUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ShadowCollection.cs" />
+    <Compile Include="ShadowCollectionMetaData.cs" />
+    <Compile Include="ShadowDictionaryMetaData.cs" />
     <Compile Include="ShadowedAttribute.cs" />
+    <Compile Include="ShadowedCollectionInterceptor.cs" />
+    <Compile Include="ShadowedDictionaryInterceptor.cs" />
     <Compile Include="ShadowedObject.cs" />
     <Compile Include="ShadowedObjectInterceptor.cs" />
+    <Compile Include="ShadowInterfaces.cs" />
+    <Compile Include="ShadowMetaData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
