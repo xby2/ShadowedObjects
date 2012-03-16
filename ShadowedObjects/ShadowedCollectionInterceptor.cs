@@ -27,35 +27,25 @@ namespace ShadowedObjects
 
 	}
 
-	//public delegate bool HasChangesDelegate();
 
-	public class ShadowedCollectionSelector : IInterceptorSelector
+	public class ShadowedCollectionProxyGenerationHook : IProxyGenerationHook
 	{
+		public void MethodsInspected()
+		{
+		}
+
+		public void NonProxyableMemberNotification(Type type, System.Reflection.MemberInfo memberInfo)
+		{
+		}
+
 		private static readonly string[] methodNamesToIntercept = new[] { "Add", "Remove", "set_Item", "InsertItem", "SetItem", "RemoveItem", "ClearItems" };
 
-		public IInterceptor[] SelectInterceptors(Type type, MethodInfo method, IInterceptor[] interceptors)
+		public bool ShouldInterceptMethod(Type type, System.Reflection.MethodInfo methodInfo)
 		{
-			if (methodNamesToIntercept.Contains(method.Name))
-			{
-				Type[] colType = type.GetGenericArguments();
-				Type GenShadowType = typeof(ShadowedCollectionInterceptor<>);
-				Type SpecShadowType = GenShadowType.MakeGenericType(colType);
-				ConstructorInfo constructor = SpecShadowType.GetConstructor(new Type[0]);
-				var newObject1 = constructor.Invoke(new object[0]);
-				var newObject = newObject1 as IInterceptor;
-				if (interceptors.Length == 1)
-				{
-					return interceptors;
-				}
-				else
-				{
-					return new IInterceptor[] { newObject };
-				}
-			}
+			if (methodNamesToIntercept.Contains(methodInfo.Name))
+			{ return true; }
 
-			return new IInterceptor[] { };
+			return false;
 		}
 	}
-    
-
 }

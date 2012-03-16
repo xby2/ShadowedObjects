@@ -18,7 +18,7 @@ namespace ShadowedObjects
 		public object Instance { get; set; }
 
 		protected readonly Dictionary<object, object> Originals = new Dictionary<object, object>();
-		protected readonly Dictionary<object, object> Previous = new Dictionary<object, object>();
+		//protected readonly Dictionary<object, object> Previous = new Dictionary<object, object>();
 
 		protected readonly Dictionary<object, object> Children = new Dictionary<object, object>();
 
@@ -81,13 +81,6 @@ namespace ShadowedObjects
 				setMethod.Invoke(instance, new object[1] { Originals[propertyName] });
 			}
 
-			//var getName = "get_" + propertyName;
-			//var getMethod = instance.GetType().GetMethod(getName);
-			//var getValue = getMethod.Invoke(instance, new object[0] { });
-			//if (getValue is IShadowObject || getValue is IShadowCollection)
-			//{
-			//    getValue.ResetToOriginal();
-			//}
 		}
 
 		private void CleanupOriginals(object propName)
@@ -220,65 +213,7 @@ namespace ShadowedObjects
 			}
 		}
 
-		//private changedDelegate DeferredDelegate(string strippedName, IShadowDeferrer deferrer)
-		//{
-		//    if (!Originals.ContainsKey(strippedName))
-		//    {
-		//        Originals[strippedName] = deferrer.Clone();
-		//    }
-		//}
-
-
-        public virtual string ListChanges<T>(T instance)
-        {
-            StringBuilder changes = new StringBuilder();
-            Dictionary<object, object>.KeyCollection keys = Originals.Keys;
-            foreach (object key in keys)
-            {
-                object originalValue = Originals[key] ?? "";
-
-                /*
-				var setName = "set_" + propertyName;
-				var setMethod = instance.GetType().GetMethod(setName);
-				setMethod.Invoke(instance, new object[1] { Originals[propertyName] });
-                 * */
-			
-
-			    var getName = "get_" + key.ToString();
-			    var getMethod = instance.GetType().GetMethod(getName);
-			    var currentValue = getMethod.Invoke(instance, new object[0] { }) ?? "";
-
-
-
-
-                if (currentValue is IShadowObject)
-                {
-                    changes.AppendLine(string.Format("{0} changed: ", key.ToString()));
-                    changes.Append(currentValue.ListChanges());
-                }
-                else
-                {
-                    changes.AppendLine(string.Format("{0} changed from '{1}' to '{2}'", key.ToString(), originalValue.ToString(), currentValue.ToString()));
-                }
-            }
-            // Now go through all the children and list the changes from them.
-            Dictionary<object, object>.KeyCollection childKeys = Children.Keys;
-            foreach (object childKey in childKeys)
-            {
-                object childValue = Children[childKey];
-                if (childValue is IShadowObject)
-                {
-                    if (childValue.HasChanges())
-                    {
-                        changes.AppendLine(string.Format("{0} changed: ", childKey.ToString()));
-                        changes.Append(childValue.ListChanges());
-                    }
-                }
-            }
-
-            return changes.ToString();
-        }
-
+		#region GetOriginal
         public object GetOriginal<T>(T instance, Expression<Func<T, object>> func)
         {
             var prop = ExpressionUtil.GetPropertyCore(func.Body);
@@ -327,10 +262,54 @@ namespace ShadowedObjects
                 return getMethod.Invoke(instance, new object[0] { }) ?? "";
             }
         }
+		#endregion
 
+		#region Show Changes
+		public virtual string ListChanges<T>(T instance)
+		{
+			StringBuilder changes = new StringBuilder();
+			Dictionary<object, object>.KeyCollection keys = Originals.Keys;
+			foreach (object key in keys)
+			{
+				object originalValue = Originals[key] ?? "";
+
+				var getName = "get_" + key.ToString();
+				var getMethod = instance.GetType().GetMethod(getName);
+				var currentValue = getMethod.Invoke(instance, new object[0] { }) ?? "";
+
+
+				if (currentValue is IShadowObject)
+				{
+					changes.AppendLine(string.Format("{0} changed: ", key.ToString()));
+					changes.Append(currentValue.ListChanges());
+				}
+				else
+				{
+					changes.AppendLine(string.Format("{0} changed from '{1}' to '{2}'", key.ToString(), originalValue.ToString(), currentValue.ToString()));
+				}
+			}
+			// Now go through all the children and list the changes from them.
+			Dictionary<object, object>.KeyCollection childKeys = Children.Keys;
+			foreach (object childKey in childKeys)
+			{
+				object childValue = Children[childKey];
+				if (childValue is IShadowObject)
+				{
+					if (childValue.HasChanges())
+					{
+						changes.AppendLine(string.Format("{0} changed: ", childKey.ToString()));
+						changes.Append(childValue.ListChanges());
+					}
+				}
+			}
+
+			return changes.ToString();
+		}
+		
         public virtual IDictionary<object, ChangeType> GetDictionaryChanges<T>(T instance)
         {
             throw new NotImplementedException();
         }
+		#endregion
     }
 }

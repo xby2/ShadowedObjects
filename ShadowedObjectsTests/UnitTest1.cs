@@ -12,6 +12,8 @@ namespace ShadowedObjectsTests
 	[TestClass]
 	public class ShadowedObjectTests
 	{
+
+		#region Test Objects
 		[Shadowed]
 		public class TestLevelA
 		{
@@ -57,10 +59,10 @@ namespace ShadowedObjectsTests
 
 			public TestLevelC() { CStuff = "start"; }
 		}
+		#endregion
 
 		#region Resetting Values
-
-
+		
 		[TestMethod]
 		public void StringResetAllPropertiesToOriginalTest()
 		{
@@ -347,6 +349,7 @@ namespace ShadowedObjectsTests
 		#endregion
 
 		#region Checking for Changes flag
+
 		[TestMethod]
 		public void CheckingForChangedObject()
 		{
@@ -518,10 +521,48 @@ namespace ShadowedObjectsTests
 			Assert.IsTrue(A.B.HasChanges());
 			Assert.IsTrue(A.B.HasChanges(b => b.C));
 		}
+		
+		[TestMethod]
+		public void AllowDictionariesWithNonStringKeys()
+		{
+			var A = new TestLevelA();
+			A.B = new TestLevelB();
+			A.B.C = new TestLevelC();
+			A.dictOfCs = new Dictionary<int, TestLevelC>();
+			A.dictOfCs.Add(5, new TestLevelC());
+			A.dictOfCs[5].CStuff = "qwerty";
+			A.dictOfCs.Add(6, new TestLevelC());
+			A.dictOfCs[6].CStuff = "Bo";
+
+			var sA = ShadowedObject.CopyInto<TestLevelA>(A);
+
+			sA.BaselineOriginals();
+
+			sA.dictOfCs[5].CStuff = "asdf";
+
+			Assert.IsTrue(sA.HasChanges());
+			Assert.AreEqual("asdf", sA.dictOfCs[5].CStuff);
+
+			sA.ResetToOriginal(a => a.dictOfCs);
+
+			Assert.AreEqual("qwerty", sA.dictOfCs[5].CStuff);
+			Assert.IsTrue(!sA.HasChanges());
+
+			sA.dictOfCs[6] = ShadowedObject.Create<TestLevelC>();
+
+			Assert.IsTrue(sA.HasChanges());
+			Assert.AreEqual("start", sA.dictOfCs[6].CStuff);
+
+			sA.BaselineOriginals();
+
+			Assert.IsFalse(sA.HasChanges());
+			sA.dictOfCs.Remove(6);
+			Assert.IsTrue(sA.HasChanges());
+		}
 
 		#endregion
 
-
+		#region copyInto tests
 		[TestMethod]
 		public void CreateShadowsFromPocoGraph()
 		{
@@ -632,43 +673,9 @@ namespace ShadowedObjectsTests
 			Assert.IsTrue(!sA.HasChanges());
 		}
 
-		[TestMethod]
-		public void AllowDictionariesWithNonStringKeys()
-		{
-			var A = new TestLevelA();
-			A.B = new TestLevelB();
-			A.B.C = new TestLevelC();
-			A.dictOfCs = new Dictionary<int, TestLevelC>();
-			A.dictOfCs.Add(5, new TestLevelC());
-			A.dictOfCs[5].CStuff = "qwerty";
-			A.dictOfCs.Add(6, new TestLevelC());
-			A.dictOfCs[6].CStuff = "Bo";
-
-			var sA = ShadowedObject.CopyInto<TestLevelA>(A);
-
-			sA.BaselineOriginals();
-
-			sA.dictOfCs[5].CStuff = "asdf";
-
-			Assert.IsTrue(sA.HasChanges());
-			Assert.AreEqual("asdf", sA.dictOfCs[5].CStuff);
-
-			sA.ResetToOriginal(a => a.dictOfCs);
-
-			Assert.AreEqual("qwerty", sA.dictOfCs[5].CStuff);
-			Assert.IsTrue(!sA.HasChanges());
-
-			sA.dictOfCs[6] = ShadowedObject.Create<TestLevelC>();
-
-			Assert.IsTrue(sA.HasChanges());
-			Assert.AreEqual("start", sA.dictOfCs[6].CStuff);
-
-			sA.BaselineOriginals();
-
-			Assert.IsFalse(sA.HasChanges());
-			sA.dictOfCs.Remove(6);
-			Assert.IsTrue(sA.HasChanges());
-		}
+		#endregion
+		
+		#region Show Changes
 
 		[TestMethod]
 		public void ShowChangesTest()
@@ -751,6 +758,10 @@ namespace ShadowedObjectsTests
 			Assert.AreEqual(1, changes.Count);
 			Assert.IsTrue(changes["asdf"] == ChangeType.Edit);
 		}
+
+		#endregion
+
+		#region GetOriginal Tests
 
 		[TestMethod]
 		public void GetOriginalOfChangedObjectTest()
@@ -884,5 +895,7 @@ namespace ShadowedObjectsTests
 
 			Assert.AreEqual(7, originalBStuff);
 		}
+
+		#endregion
 	}
 }

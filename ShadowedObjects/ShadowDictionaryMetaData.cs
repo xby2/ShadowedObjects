@@ -35,6 +35,7 @@ namespace ShadowedObjects
             }
         }
 
+		#region Show Changes
         public override string ListChanges<T>(T instance)
         {
             StringBuilder changes = new StringBuilder();
@@ -139,6 +140,7 @@ namespace ShadowedObjects
 
             return changeSet;
         }
+		#endregion
 
         public override object GetOriginal<T>(T instance, object propertyKey)
         {

@@ -17,11 +17,11 @@ namespace ShadowedObjects
         Add, Remove, Edit
     }
 
-	
 	public static class ShadowedObject
 	{
 		private static readonly ProxyGenerator _generator = new ProxyGenerator();
 
+		#region "Create" Extensions
 		public static T Create<T>() where T: class
 		{
 			var setCeptor = new ShadowedInterceptor<T>();
@@ -44,7 +44,7 @@ namespace ShadowedObjects
         public static IDictionary<TKey, TValue> CreateDictionary<TKey, TValue>()
         {
             var setCeptor = new ShadowedDictionaryInterceptor<TKey, TValue>();
-            var options = new ProxyGenerationOptions { Selector = new ShadowedDictionarySelector() };
+            var options = new ProxyGenerationOptions ( new ShadowedDictionaryProxyGenerationHook() );
             var meta = new ShadowDictionaryMetaData<TKey, TValue>();
             options.AddMixinInstance(meta);
             setCeptor.Instance = meta;
@@ -60,28 +60,10 @@ namespace ShadowedObjects
             return theShadow as IDictionary<TKey, TValue>;
         }
 		
-        public static IDictionary<TKey, TValue> CopyIntoDictionary<TKey, TValue>(IDictionary<TKey, TValue> baseDictionary)
-        {
-            var shadowDictionary = CreateDictionary<TKey, TValue>();
-            
-            foreach (TKey key in baseDictionary.Keys)
-            {
-                TValue theValue = baseDictionary[key];
-                if (theValue.GetType().GetCustomAttributes(typeof(ShadowedAttribute), true).Length > 0
-				    && !(theValue is IShadowObject))
-				{
-                    theValue = (TValue)CopyIntoSomething(theValue);
-				}
-                shadowDictionary.Add(key, theValue);
-                
-            }
-            return shadowDictionary; 
-        }
-
 		public static IList<T> CreateCollection<T>()
 		{
 			var setCeptor = new ShadowedCollectionInterceptor<T>();
-			var options = new ProxyGenerationOptions() { Selector = new ShadowedCollectionSelector() };
+			var options = new ProxyGenerationOptions( new ShadowedCollectionProxyGenerationHook() );
 			var meta = new ShadowCollectionMetaData<T>();
 
 			options.AddMixinInstance(meta);
@@ -97,7 +79,27 @@ namespace ShadowedObjects
 
 			return theShadow as IList<T>;
 		}
+		#endregion "Create"
 
+		#region "CopyInto Extensions"
+		public static IDictionary<TKey, TValue> CopyIntoDictionary<TKey, TValue>(IDictionary<TKey, TValue> baseDictionary)
+		{
+			var shadowDictionary = CreateDictionary<TKey, TValue>();
+
+			foreach (TKey key in baseDictionary.Keys)
+			{
+				TValue theValue = baseDictionary[key];
+				if (theValue.GetType().GetCustomAttributes(typeof(ShadowedAttribute), true).Length > 0
+					&& !(theValue is IShadowObject))
+				{
+					theValue = (TValue)CopyIntoSomething(theValue);
+				}
+				shadowDictionary.Add(key, theValue);
+
+			}
+			return shadowDictionary;
+		}
+		
 		public static IList<T> CopyIntoCollection<T>(IList<T> baseCollection)
 		{
 			var shadCollection = CreateCollection<T>();
@@ -138,6 +140,7 @@ namespace ShadowedObjects
 			return shadInstance;
 		}
 
+		//Main switching and recursing method
 		private static object CopyIntoSomething(object theValue) 
 		{
 			var valType = theValue.GetType();
@@ -169,19 +172,9 @@ namespace ShadowedObjects
 			}
 			return theValue;
 		}
+		#endregion
 
-		private static bool IsDictionary(Type checkType)
-		{
-			Type[] colType = checkType.GetGenericArguments();
-			if (colType.Count() == 2)
-			{
-				Type GenShadowType = typeof(IDictionary<,>);
-				Type SpecShadowType = GenShadowType.MakeGenericType(colType);
-				return SpecShadowType.IsAssignableFrom(checkType);
-			}
-			return false;
-		}
-
+		#region "ResetToOriginal" Extensions
 		public static void ResetToOriginal<T>(this T shadowed, Expression<Func<T, object>> property )
 		{
 			//var ishadow = GetIShadow((IShadowObject)shadowed);
@@ -193,21 +186,25 @@ namespace ShadowedObjects
             //var ishadow = GetIShadow((IShadowObject)shadowed);
             (shadowed as IShadowChangeTracker).ResetToOriginals(shadowed);
 		}
+		#endregion
 
 		public static void BaselineOriginals(this object shadowed) 
 		{
-			BaselineOriginalsEx(shadowed);
+			(shadowed as IShadowChangeTracker).BaselineOriginals();
 		}
 
-		public static void BaselineOriginalsEx(object shadowed) 
-		{
-            (shadowed as IShadowChangeTracker).BaselineOriginals();
-		}
-
+		#region "HasChanges" Extensions
 		public static bool HasChanges<T>(this T shadowed)
 		{
 			return (shadowed as IShadowChangeTracker).HasChanges;
 		}
+
+		public static bool HasChanges<T>(this T shadowed, Expression<Func<T, object>> property)
+		{
+			//var ishadow = GetIShadow((IShadowObject)shadowed);
+			return (shadowed as IShadowChangeTracker).HasPropertyChange((T)shadowed, property);
+		}
+		#endregion
 
         public static string ListChanges<T>(this T shadowed)
         {
@@ -219,11 +216,7 @@ namespace ShadowedObjects
             return (shadowed as IShadowChangeTracker).GetDictionaryChanges((T)shadowed);
         }
 
-        public static bool HasChanges<T>(this T shadowed, Expression<Func<T, object>> property)
-        {
-            //var ishadow = GetIShadow((IShadowObject)shadowed);
-            return (shadowed as IShadowChangeTracker).HasPropertyChange((T)shadowed, property);
-        }
+		#region "GetOriginals Extensions"
 
         public static T GetOriginal<T>(this T shadowed)
         {
@@ -242,6 +235,19 @@ namespace ShadowedObjects
             //var ishadow = GetIShadow((IShadowObject)shadowed);
             return (shadowed as IShadowChangeTracker).GetOriginal((T)shadowed, propertyKey);
         }
+		#endregion
+
+		private static bool IsDictionary(Type checkType)
+		{
+			Type[] colType = checkType.GetGenericArguments();
+			if (colType.Count() == 2)
+			{
+				Type GenShadowType = typeof(IDictionary<,>);
+				Type SpecShadowType = GenShadowType.MakeGenericType(colType);
+				return SpecShadowType.IsAssignableFrom(checkType);
+			}
+			return false;
+		}
 
 		internal static IShadowIntercept GetIShadow(object shadowed)
 		{
@@ -274,8 +280,6 @@ namespace ShadowedObjects
 
 		public void NonProxyableMemberNotification(Type type, System.Reflection.MemberInfo memberInfo)
 		{
-			//var err = System.Text.UTF8Encoding.UTF8.GetBytes("Can't Proxy: " + memberInfo.Name + "\n");
-			//Console.OpenStandardError().Write(err, 0, err.Length);
 		}
 
 		public bool ShouldInterceptMethod(Type type, System.Reflection.MethodInfo methodInfo)
@@ -283,45 +287,8 @@ namespace ShadowedObjects
 			//JDB: technically I think this should use the Attribute that the compiler puts on the IL, but this will do for now
 			if (methodInfo.Name.StartsWith("set_", StringComparison.Ordinal))
 			{ return true;}
-
-			//if (methodInfo.ReturnType.IsGenericType && typeof(ICollection).IsAssignableFrom( methodInfo.ReturnType))
-			//{	return true; }
-
-			//if (methodInfo.ReturnType.IsGenericType && methodInfo.ReturnType.Name == typeof(Dictionary<string, object>).Name)
-			//{
-			//    return true;
-			//}
-
-
+			
 			return false;
 		}
 	}
-
-	//public class ShadowedObjectsInterceptorSelector : IInterceptorSelector
-	//{
-
-	//    public IInterceptor[] SelectInterceptors(Type type, System.Reflection.MethodInfo method, IInterceptor[] interceptors)
-	//    {
-	//        if ( IsSetter(method) )
-	//        {
-	//            return interceptors.Where( i=>i.GetType().GetGenericTypeDefinition() == typeof( ShadowedSetInterceptor<> ) ).ToArray();
-	//        }
-	//        else if ( IsGenericCollection( method ) )
-	//        {
-	//            return interceptors.Where(i => i.GetType().GetGenericTypeDefinition() == typeof(ShadowedGenericCollectionInterceptor<>)).ToArray();
-	//        }
-
-	//        return new IInterceptor[0];
-	//    }
-
-	//    private bool IsGenericCollection(MethodInfo method)
-	//    {
-	//        return method.ReturnType.IsGenericType && typeof(ICollection).IsAssignableFrom( method.ReturnType);
-	//    }
-
-	//    private bool IsSetter(MethodInfo method)
-	//    {
-	//        return method.IsSpecialName && method.Name.StartsWith("set_", StringComparison.Ordinal);
-	//    }
-	//}
 }
