@@ -249,6 +249,7 @@ namespace ShadowedObjects
 			return false;
 		}
 
+		//This is not used....but um, I like having it around to remind me how to get the Interceptor reference...bad coding, bad.
 		internal static IShadowIntercept GetIShadow(object shadowed)
 		{
 			if (shadowed == null)

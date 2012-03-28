@@ -13,9 +13,10 @@ namespace ShadowedObjects
 		bool HasDirectChanges { get; }
 		bool HasChanges { get; }
         bool HasPropertyChange<T>(T instance, Expression<Func<T, object>> func);
+		
 		void BaselineOriginals();
-		void ResetToOriginals(object instance);
 
+		void ResetToOriginals(object instance);
 		void ResetToOriginals<T>(T instance, Expression<Func<T, object>> func);
 
         string ListChanges<T>(T instance);
@@ -24,8 +25,7 @@ namespace ShadowedObjects
         T GetOriginal<T>(T instance);
         object GetOriginal<T>(T instance, Expression<Func<T, object>> property);
         object GetOriginal<T>(T instance, object propertyKey);
-
-        
+		
     }
 
 	public interface IShadowMetaData : IShadowChangeTracker

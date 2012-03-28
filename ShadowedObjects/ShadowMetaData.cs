@@ -32,10 +32,10 @@ namespace ShadowedObjects
 			ICollection<object> keys = Children.Keys;
 			foreach (object key in keys)
 			{
-				var item = Children[key];
-				if (item is IShadowObject)
+				var shadowChangeTracker = Children[key] as IShadowChangeTracker;
+				if (shadowChangeTracker != null)
 				{
-					item.BaselineOriginals();
+					shadowChangeTracker.BaselineOriginals();
 				}
 			}
 		}

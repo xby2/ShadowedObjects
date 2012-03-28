@@ -21,9 +21,7 @@ namespace ShadowedObjects
 		public void Intercept(IInvocation invocation)
 		{
 			InterceptSet(invocation);
-			{
-				invocation.Proceed();
-			}
+
 		}
 
 		private void InterceptSet(IInvocation invocation)

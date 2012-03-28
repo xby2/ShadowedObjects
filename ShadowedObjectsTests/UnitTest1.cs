@@ -88,7 +88,7 @@ namespace ShadowedObjectsTests
 		[TestMethod]
 		public void ChildObjectResetToOriginalTest()
 		{
-			var A = ShadowedObject.Create<TestLevelA>();
+			TestLevelA A = ShadowedObject.Create<TestLevelA>();
 			A.NestedAs = new Collection<TestLevelA>();
 			A.B = ShadowedObject.Create<TestLevelB>();
 			A.B.Bstuff = 2;
@@ -141,7 +141,7 @@ namespace ShadowedObjectsTests
 			A.NestedAs.Add(new TestLevelA());
 			A.NestedAs.Add(new TestLevelA());
 
-			A.ResetToOriginal(a => a.NestedAs);
+			A.ResetToOriginal(a => a.NestedAs[0]);
 
 			Assert.IsTrue(A.NestedAs.Count < 1);
 		}
