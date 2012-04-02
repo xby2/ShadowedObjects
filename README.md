@@ -1,8 +1,11 @@
-ShadowedObjects is a library that provides object-level undo capabilities to
+# ShadowedObjects #
+
+ShadowedObjects is a library that adds object-level undo capabilities to
 your custom business objects.
 
 ## Examples ##
 
+### Simple Properties
 ```csharp
 [Shadowed]
 public class MyBusinessObject
